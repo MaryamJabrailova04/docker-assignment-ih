@@ -1,0 +1,22 @@
+name: Deploy to Azure VM
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH to VM and deploy
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          password: ${{ secrets.VM_PASSWORD }}
+          script: |
+            cd docker-assignment-ih || git clone https://github.com/MaryamJabrailova04/docker-assignment-ih.git
+            cd docker-assignment-ih
+            git pull
+            docker-compose down
+            docker-compose up -d --build
