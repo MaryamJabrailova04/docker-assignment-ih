@@ -1,9 +1,10 @@
-version: '3.8'
+version: "3.9"
 
 services:
-  postgres:
-    image: postgres:13
-    container_name: postgres-db
+  db:
+    image: postgres:15
+    container_name: notes-db
+    restart: unless-stopped
     environment:
       POSTGRES_DB: notes_db
       POSTGRES_USER: postgres
@@ -12,26 +13,39 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - notes-net
 
   backend:
     build: ./backend
-    container_name: backend
+    container_name: notes-backend
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:password@db:5432/notes_db
     ports:
       - "3001:3001"
-    environment:
-      DATABASE_URL: postgres://postgres:password@postgres:5432/notes_db
-    depends_on:
-      - postgres
+    networks:
+      - notes-net
 
   frontend:
     build: ./frontend
-    container_name: frontend
-    ports:
-      - "3000:3000"
-    environment:
-      REACT_APP_API_URL: http://backend:3001
+    container_name: notes-frontend
+    restart: unless-stopped
     depends_on:
       - backend
+    environment:
+      REACT_APP_API_URL: http://20.215.233.48:3001
+    ports:
+      - "3000:3000"
+    networks:
+      - notes-net
 
 volumes:
-  postgres_data:         
+  postgres_data:
+
+networks:
+  notes-net:
+    driver: bridge
