@@ -1,9 +1,10 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:13
-    container_name: postgres-db
+  db:
+    image: postgres:15-alpine
+    container_name: notes-db
+    restart: unless-stopped
     environment:
       POSTGRES_DB: notes_db
       POSTGRES_USER: postgres
@@ -12,26 +13,47 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notes_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - notes-net
 
   backend:
     build: ./backend
-    container_name: backend
+    container_name: notes-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgres://postgres:password@db:5432/notes_db
+      ALLOWED_ORIGINS: http://localhost:3000
     ports:
       - "3001:3001"
-    environment:
-      DATABASE_URL: postgres://postgres:password@postgres:5432/notes_db
-    depends_on:
-      - postgres
+    networks:
+      - notes-net
 
   frontend:
     build: ./frontend
-    container_name: frontend
-    ports:
-      - "3000:3000"
-    environment:
-      REACT_APP_API_URL: http://backend:3001
+    container_name: notes-frontend
+    restart: unless-stopped
     depends_on:
       - backend
+    environment:
+      REACT_APP_API_URL: http://localhost:3001
+      HOST: 0.0.0.0
+    ports:
+      - "3000:3000"
+    networks:
+      - notes-net
 
 volumes:
   postgres_data:
+
+networks:
+  notes-net:
+    driver: bridge
